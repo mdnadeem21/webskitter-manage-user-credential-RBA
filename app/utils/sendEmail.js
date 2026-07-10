@@ -29,7 +29,7 @@ const sendEmail = async (req, user) => {
     `,
   });
 
-  return { randomPassword };
+  return  randomPassword ;
 }
 
 module.exports = sendEmail;

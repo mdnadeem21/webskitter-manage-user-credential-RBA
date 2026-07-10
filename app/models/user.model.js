@@ -28,6 +28,10 @@ const userSchema = new Schema({
     enum: ['User', 'Admin'],
     default: 'User',
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 const User = mongoose.model('manage-user-credential', userSchema);

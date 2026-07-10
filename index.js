@@ -4,6 +4,7 @@ const path=require('path')
 const cors=require('cors')
 const cookieParser=require('cookie-parser')
 const connectDB = require('./app/config/db')
+const userRoutes = require('./app/routes/user.routes')
 
 connectDB()
 const app = express()
@@ -14,6 +15,8 @@ app.use(cookieParser())
 //middleware
 app.use(express.json());
 app.use(express.urlencoded({extended:false}))
+ 
+app.use('/api', userRoutes)
 
 
 const PORT=process.env.PORT||3005

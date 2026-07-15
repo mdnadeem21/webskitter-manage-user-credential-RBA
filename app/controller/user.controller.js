@@ -130,7 +130,18 @@ class UserController {
                     message: 'Invalid email or password'
                 });
             }
-            const token = jwt.sign({
+
+            // generate access token using jwt
+            const accessToken = jwt.sign({
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                department: user.department,
+                role: user.role
+            }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1m' });
+
+            const refreshToken = jwt.sign({
                 id: user._id,
                 name: user.name,
                 email: user.email,
@@ -138,7 +149,26 @@ class UserController {
                 department: user.department,
                 role: user.role
 
-            }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1h' });
+            }, process.env.JWT_SECRET || 'jwt_secret_key', { expiresIn: '7d' });
+
+            // hashed refresh token for security
+            const hashedRefreshToken = await bcryptjs.hash(refreshToken, 10);
+            // Store refresh token in the database
+            user.refreshToken = hashedRefreshToken;
+            await user.save();
+
+            const token = {
+                accessToken: accessToken,
+                refreshToken: refreshToken
+            };
+
+            // set cookie for refresh token
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production', // Set to true in production
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
             res.status(200).json({
                 status: true,
                 message: 'Login successful',
@@ -148,6 +178,72 @@ class UserController {
         } catch (err) {
             console.log(err);
             res.status(500).json({ status: false, message: 'Server error in login user' });
+        }
+    }
+
+    async generateAccessToken(req, res) {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) {
+                return res.status(400).json({ status: false, message: 'Refresh token is required' });
+            }
+            // Verify the refresh token
+            jwt.verify(refreshToken, process.env.JWT_SECRET || 'jwt_secret_key', async (err, decoded) => {
+                if (err) {
+                    return res.status(401).json({ status: false, message: 'Invalid refresh token error' });
+                }
+                const user = await User.findById(decoded.id);
+                const decodedRefreshToken = await bcryptjs.compare(refreshToken, user.refreshToken);
+                if (!user || !decodedRefreshToken) {
+                    return res.status(401).json({ status: false, message: 'Invalid refresh token user' });
+                }
+                // Generate a new access token
+                const newAccessToken = jwt.sign({
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone,
+                    department: user.department,
+                    role: user.role
+                }, process.env.JWT_SECRET || 'jwt_secret_key', { expiresIn: '1m' });
+                res.status(200).json({
+                    status: true,
+                    message: 'Access token refreshed successfully',
+                    accessToken: newAccessToken
+                });
+            });
+        } catch (err) {
+            console.log(err);
+            res.status(500).json({ status: false, message: 'Server error in refresh token' });
+        }
+    }
+
+    async logoutUser(req, res) {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) {
+                return res.status(400).json({ status: false, message: 'Refresh token is required' });
+            }
+            // Verify the refresh token
+            jwt.verify(refreshToken, process.env.JWT_SECRET || 'your-secret-key', async (err, decoded) => {
+                if (err) {
+                    return res.status(401).json({ status: false, message: 'Invalid refresh token' });
+                }
+                const user = await User.findById(decoded.id);
+                if (!user || user.refreshToken !== refreshToken) {
+                    return res.status(401).json({ status: false, message: 'Invalid refresh token' });
+                }
+                // Clear the refresh token from the database
+                user.refreshToken = null;
+                await user.save();
+                res.status(200).json({
+                    status: true,
+                    message: 'Logout successful'
+                });
+            });
+        } catch (err) {
+            console.log(err);
+            res.status(500).json({ status: false, message: 'Server error in logout user' });
         }
     }
 

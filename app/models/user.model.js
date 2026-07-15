@@ -32,6 +32,11 @@ const userSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  refreshToken: {
+    type: String,
+    default: null,
+  },
 }, { timestamps: true });
 
 const User = mongoose.model('manage-user-credential', userSchema);
+module.exports = User;

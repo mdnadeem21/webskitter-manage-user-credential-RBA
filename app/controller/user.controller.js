@@ -193,8 +193,8 @@ class UserController {
                     return res.status(401).json({ status: false, message: 'Invalid refresh token error' });
                 }
                 const user = await User.findById(decoded.id);
-                const decodedRefreshToken = await bcryptjs.compare(refreshToken, user.refreshToken);
-                if (!user || !decodedRefreshToken) {
+                const isRefreshTokenValid = await bcryptjs.compare(refreshToken, user.refreshToken);
+                if (!user || !isRefreshTokenValid) {
                     return res.status(401).json({ status: false, message: 'Invalid refresh token user' });
                 }
                 // Generate a new access token
